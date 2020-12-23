@@ -53,3 +53,18 @@ fn test_example_enum() {
 fn test_example_union() {
   assert_eq!(ExampleUnion::field_count(), 1);
 }
+
+#[test]
+fn test_primitive1() {
+  assert_eq!(i64::field_count(), 1);
+}
+
+#[test]
+fn test_primitive2() {
+  assert_eq!(<()>::field_count(), 1);
+}
+
+#[test]
+fn test_primitive3() {
+  assert_eq!(String::field_count(), 1);
+}
