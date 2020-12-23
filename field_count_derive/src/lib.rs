@@ -45,8 +45,8 @@ pub fn derive_recursive_field_count(input: TokenStream) -> TokenStream {
         let fields: Vec<syn::Ident> = fields.named.iter().map(
           |field| field.ident.clone().unwrap()
         ).collect();
-        println!("{:?}", fields);
-        let res = quote! {
+
+        quote! {
           impl RecursiveFieldCount for #name {
             fn recursive_field_count(&self) -> usize {
               0 #(
@@ -54,9 +54,7 @@ pub fn derive_recursive_field_count(input: TokenStream) -> TokenStream {
               )*
             }
           }
-        };
-        println!("{}", res);
-        res
+        }
       },
       _ => panic!(ERR_MSG),
     },
