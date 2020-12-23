@@ -10,15 +10,15 @@ pub fn derive_field_count(input: TokenStream) -> TokenStream {
 
   let name = &input.ident;
 
-  let field_count = if let Data::Struct(data_struct) = input.data {
-    match data_struct.fields {
+  let field_count = match input.data {
+    Data::Struct(data_struct) => match data_struct.fields {
       Fields::Named(fields) => fields.named.len(),
-      _ => panic!("derive(FieldCount) only possible on named structs")
-    }
-  } else {
-    panic!("derive(FieldCount) only possible on named structs");
+      Fields::Unnamed(fields) => fields.unnamed.len(),
+      Fields::Unit => 0,
+    },
+    Data::Enum(data_enum) => data_enum.variants.len(),
+    Data::Union(_) => 1,
   };
-
 
   let result = quote! {
     impl FieldCount for #name {
