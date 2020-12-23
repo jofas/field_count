@@ -7,5 +7,8 @@ macro for deriving the trait in a save manner.
 TODO
 ----
 
-* implement ``RecursiveFieldCount`` (maybe with attribute for skipping
-  some field from recursion)
+* documentation
+
+* pipeline
+
+* codecov
