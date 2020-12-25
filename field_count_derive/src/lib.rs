@@ -93,7 +93,7 @@ pub fn derive_field_count_by_type(input: TokenStream) -> TokenStream {
       impl FieldCountByType<#keys> for #name {
         fn field_count_by_type(&self) -> usize {#values}
       }
-     )*
+    )*
     #(
       impl FieldCountByType<#generic_keys<field_count::Generic>> for #name {
         fn field_count_by_type(&self) -> usize {#generic_values}

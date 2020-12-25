@@ -27,18 +27,21 @@ impl FieldCountByType<bool> for ExampleNamedStruct {
 #[test]
 fn test_what_is_possible() {
   assert_eq!(
-    <ExampleNamedStruct as FieldCountByType<i64>>
-      ::field_count_by_type(&ExampleNamedStruct::default()),
+    FieldCountByType::<i64>::field_count_by_type(
+      &ExampleNamedStruct::default()
+    ),
     1
   );
   assert_eq!(
-    <ExampleNamedStruct as FieldCountByType<Option<bool>>>
-      ::field_count_by_type(&ExampleNamedStruct::default()),
+    FieldCountByType::<Option<bool>>::field_count_by_type(
+      &ExampleNamedStruct::default()
+    ),
     2
   );
   assert_eq!(
-    <ExampleNamedStruct as FieldCountByType<Option<Generic>>>
-      ::field_count_by_type(&ExampleNamedStruct::default()),
+    FieldCountByType::<Option<Generic>>::field_count_by_type(
+      &ExampleNamedStruct::default()
+    ),
     3
   );
 }
