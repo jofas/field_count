@@ -23,11 +23,46 @@ pub fn derive_field_count(input: TokenStream) -> TokenStream {
   };
 
   let result = quote! {
-    impl FieldCount for #name {
+    impl field_count::FieldCount for #name {
       fn field_count(&self) -> usize {
         #field_count
       }
     }
+  };
+
+  TokenStream::from(result)
+}
+
+static ERR_MSG: &'static str =
+  "Derive(RecursiveFieldCount) only applicable to named structs";
+
+#[proc_macro_derive(RecursiveFieldCount)]
+pub fn derive_recursive_field_count(input: TokenStream) -> TokenStream {
+  let input = parse_macro_input!(input as DeriveInput);
+
+  let name = &input.ident;
+
+  let result = match input.data {
+    Data::Struct(data_struct) => match data_struct.fields {
+      Fields::Named(fields) => {
+        let fields: Vec<syn::Ident> = fields.named.iter().map(
+          |field| field.ident.clone().unwrap()
+        ).collect();
+
+        quote! {
+          impl field_count::RecursiveFieldCount for #name {
+            fn recursive_field_count(&self) -> usize {
+              0 #(
+               + self.#fields.recursive_field_count()
+              )*
+            }
+          }
+        }
+      },
+      // TODO: implement for other struct types
+      _ => panic!(ERR_MSG),
+    },
+    _ => panic!(ERR_MSG),
   };
 
   TokenStream::from(result)
@@ -47,7 +82,6 @@ pub fn derive_field_count_by_type(input: TokenStream) -> TokenStream {
   // two different paths (e.g. struct Example(String,
   // ::std::string::String);) will fail
   //
-  // TODO: Option<_> to count over all option types
   match input.data {
     Data::Struct(data_struct) => match data_struct.fields {
       Fields::Named(fields) =>
@@ -90,49 +124,17 @@ pub fn derive_field_count_by_type(input: TokenStream) -> TokenStream {
 
   let result = quote! {
     #(
-      impl FieldCountByType<#keys> for #name {
+      impl field_count::FieldCountByType<#keys> for #name {
         fn field_count_by_type(&self) -> usize {#values}
       }
     )*
     #(
-      impl FieldCountByType<#generic_keys<field_count::Generic>> for #name {
+      impl field_count::FieldCountByType<#generic_keys<
+        field_count::Generic>> for #name
+      {
         fn field_count_by_type(&self) -> usize {#generic_values}
       }
     )*
-  };
-
-  TokenStream::from(result)
-}
-
-static ERR_MSG: &'static str =
-  "Derive(RecursiveFieldCount) only applicable to named structs";
-
-#[proc_macro_derive(RecursiveFieldCount)]
-pub fn derive_recursive_field_count(input: TokenStream) -> TokenStream {
-  let input = parse_macro_input!(input as DeriveInput);
-
-  let name = &input.ident;
-
-  let result = match input.data {
-    Data::Struct(data_struct) => match data_struct.fields {
-      Fields::Named(fields) => {
-        let fields: Vec<syn::Ident> = fields.named.iter().map(
-          |field| field.ident.clone().unwrap()
-        ).collect();
-
-        quote! {
-          impl RecursiveFieldCount for #name {
-            fn recursive_field_count(&self) -> usize {
-              0 #(
-               + self.#fields.recursive_field_count()
-              )*
-            }
-          }
-        }
-      },
-      _ => panic!(ERR_MSG),
-    },
-    _ => panic!(ERR_MSG),
   };
 
   TokenStream::from(result)
