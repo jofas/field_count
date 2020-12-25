@@ -10,5 +10,5 @@ edition = "2018"
 proc-macro = true
 
 [dependencies]
-syn = { version = "*", features = ["derive"] }
+syn = { version = "*", features = ["derive", "printing", "extra-traits"] }
 quote = "*"

@@ -1,13 +1,48 @@
-use field_count::{FieldCount, RecursiveFieldCount};
+use field_count::{FieldCount, RecursiveFieldCount, FieldCountByType,
+  Generic};
 
-#[derive(FieldCount, RecursiveFieldCount, Default)]
+#[derive(FieldCount, RecursiveFieldCount, Default, FieldCountByType)]
 struct ExampleNamedStruct {
   field1: i64,
-  _field2: bool,
+  _field2: Option<bool>,
   _field3: String,
-  _field4: u32,
-  _field5: String,
+  _field4: Option<bool>,
+  _field5: Option<String>,
 }
+
+/*
+impl<T> FieldCountByType<Option<T>> for ExampleNamedStruct {
+  fn field_count_by_type(&self) -> usize {3}
+}
+
+impl FieldCountByType<i64> for ExampleNamedStruct {
+  fn field_count_by_type(&self) -> usize {1}
+}
+
+impl FieldCountByType<bool> for ExampleNamedStruct {
+  fn field_count_by_type(&self) -> usize {1}
+}
+*/
+
+#[test]
+fn test_what_is_possible() {
+  assert_eq!(
+    <ExampleNamedStruct as FieldCountByType<i64>>
+      ::field_count_by_type(&ExampleNamedStruct::default()),
+    1
+  );
+  assert_eq!(
+    <ExampleNamedStruct as FieldCountByType<Option<bool>>>
+      ::field_count_by_type(&ExampleNamedStruct::default()),
+    2
+  );
+  assert_eq!(
+    <ExampleNamedStruct as FieldCountByType<Option<Generic>>>
+      ::field_count_by_type(&ExampleNamedStruct::default()),
+    3
+  );
+}
+
 
 #[derive(FieldCount, RecursiveFieldCount, Default)]
 struct ExampleNestedStruct {
@@ -28,6 +63,7 @@ fn test_example_named_struct() {
   assert_eq!(ExampleNamedStruct::default().field_count(), 5);
 }
 
+#[test]
 fn test_example_named_struct_recursive() {
   assert_eq!(ExampleNamedStruct::default().recursive_field_count(), 5);
 }
@@ -37,6 +73,7 @@ fn test_example_nested_struct() {
   assert_eq!(ExampleNestedStruct::default().field_count(), 4);
 }
 
+#[test]
 fn test_example_nested_struct_recursive() {
   assert_eq!(ExampleNestedStruct::default().recursive_field_count(), 8);
 }
