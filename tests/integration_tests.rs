@@ -8,8 +8,22 @@ struct ExampleNamedStruct {
   field1: i64,
   _field2: Option<bool>,
   _field3: ::std::string::String,
-  _field4: Option<bool>,
-  _field5: Option<String>,
+  _field4: Option<i64>,
+  _field5: MyResult<String, ()>,
+  _field6: MyResult<i64, i64>,
+}
+
+enum MyResult<T, U> {
+  Ok(T),
+  _Err(U),
+}
+
+impl<T: Default, U> Default for MyResult<T, U> {
+  fn default() -> Self { MyResult::Ok(T::default()) }
+}
+
+impl<T, U> RecursiveFieldCount for MyResult<T, U> {
+  fn recursive_field_count(&self) -> usize {1}
 }
 
 #[derive(FieldCount, RecursiveFieldCount, Default)]
@@ -28,40 +42,26 @@ struct ExampleUnitStruct;
 
 #[test]
 fn test_example_named_struct() {
-  assert_eq!(ExampleNamedStruct::default().field_count(), 5);
+  assert_eq!(ExampleNamedStruct::default().field_count(), 6);
 }
 
 #[test]
 fn test_example_named_struct_recursive() {
-  assert_eq!(ExampleNamedStruct::default().recursive_field_count(), 5);
+  assert_eq!(ExampleNamedStruct::default().recursive_field_count(), 6);
 }
 
 #[test]
 fn test_named_struct_by_type() {
-  assert_eq!(
-    FieldCountByType::<i64>::field_count_by_type(
-      &ExampleNamedStruct::default()
-    ),
-    1
-  );
-  assert_eq!(
-    FieldCountByType::<Option<bool>>::field_count_by_type(
-      &ExampleNamedStruct::default()
-    ),
-    2
-  );
-  assert_eq!(
-    FieldCountByType::<String>::field_count_by_type(
-      &ExampleNamedStruct::default()
-    ),
-    1
-  );
-  assert_eq!(
-    FieldCountByType::<Option<Generic>>::field_count_by_type(
-      &ExampleNamedStruct::default()
-    ),
-    3
-  );
+  let def = ExampleNamedStruct::default();
+
+  assert_eq!(FieldCountByType::<i64>::field_count_by_type(&def), 1);
+  assert_eq!(FieldCountByType::<Option<bool>>::field_count_by_type(&def), 1);
+  assert_eq!(FieldCountByType::<String>::field_count_by_type(&def), 1);
+  assert_eq!(FieldCountByType::<Option<Generic>>::field_count_by_type(&def), 2);
+  assert_eq!(FieldCountByType::<MyResult<String, ()>>::field_count_by_type(&def), 1);
+  assert_eq!(FieldCountByType::<MyResult<String, Generic>>::field_count_by_type(&def), 1);
+  assert_eq!(FieldCountByType::<MyResult<Generic, ()>>::field_count_by_type(&def), 1);
+  assert_eq!(FieldCountByType::<MyResult<Generic, Generic>>::field_count_by_type(&def), 2);
 }
 
 #[test]
@@ -71,7 +71,7 @@ fn test_example_nested_struct() {
 
 #[test]
 fn test_example_nested_struct_recursive() {
-  assert_eq!(ExampleNestedStruct::default().recursive_field_count(), 8);
+  assert_eq!(ExampleNestedStruct::default().recursive_field_count(), 9);
 }
 
 #[test]

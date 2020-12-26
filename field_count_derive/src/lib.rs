@@ -4,7 +4,9 @@ use proc_macro::TokenStream;
 use quote::quote;
 use quote::ToTokens;
 use syn::{parse_macro_input, DeriveInput, Data, Fields, Type,
-  PathArguments};
+  PathArguments, GenericArgument, parse_quote};
+use syn::punctuated::Punctuated;
+use syn::token::Comma;
 
 use std::collections::HashMap;
 
@@ -69,116 +71,99 @@ pub fn derive_recursive_field_count(input: TokenStream) -> TokenStream {
   TokenStream::from(result)
 }
 
+fn generate_generic_idents(args: &Punctuated<GenericArgument, Comma>)
+  -> Vec<Punctuated<GenericArgument, Comma>>
+{
+  let mut res = vec![args.clone()];
+
+  for i in 0..args.len() {
+    let mut new_args = Vec::new();
+    for ident in &res {
+      let mut new_ident = ident.clone();
+      new_ident[i] = parse_quote!(field_count::Generic);
+      new_args.push(new_ident);
+    }
+    res.append(&mut new_args);
+  }
+
+  res
+}
+
 #[proc_macro_derive(FieldCountByType)]
 pub fn derive_field_count_by_type(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as DeriveInput);
 
   let name = &input.ident;
 
-  // type -> (args_count, count)
-  let mut generic_types = HashMap::new();
   let mut types = HashMap::new();
 
   // IMPORTANT: this macro will fail when same type is used with
   // two different paths (e.g. struct Example(String,
   // ::std::string::String);) will fail
   //
-  // TODO: arbitrary Generics breadth-wise (<_,_,_,...>)
-  //       arbitrary Generics depth-wise (Option<Option<Generics>>)
+  // TODO: arbitrary Generics depth-wise (Option<Option<Generics>>)
   match input.data {
     Data::Struct(data_struct) => match data_struct.fields {
       Fields::Named(fields) =>
         fields.named.into_iter().for_each(|x| {
-
-          //println!("{:?}", x.ty);
-
           if let Type::Path(type_path) = &x.ty {
-            let ident = type_path.path.segments.last().unwrap();
-
-            let mut new_ident = match type_path.path.leading_colon {
+            let mut base_ident = match type_path.path.leading_colon {
               Some(_) => String::from("::"),
               None => String::new(),
             };
 
+            let mut new_idents = Vec::new();
+
             type_path.path.segments.pairs().for_each(|pair| {
-              new_ident = if let Some(_) = pair.punct() {
-                format!("{}{}::", new_ident, pair.value().ident)
+              base_ident = if let Some(_) = pair.punct() {
+                format!("{}{}::", base_ident, pair.value().ident)
               } else {
-                format!("{}{}", new_ident, pair.value().ident)
+                format!("{}{}", base_ident, pair.value().ident)
               };
 
 
-              if let PathArguments::AngleBracketed(_args) =
+              if let PathArguments::AngleBracketed(args) =
                 &pair.value().arguments
               {
-                // here iterate all possibilities
-                // (2**arguments.len())
-                // ...
-                //
-                // recursively feed the map into some function ?
-                new_ident =
-                  format!("{}{}", new_ident, _args.to_token_stream());
+                new_idents =
+                  generate_generic_idents(&args.args).iter().map(
+                    |x| format!("{}<{}>", base_ident, x.to_token_stream())
+                  ).collect();
               }
             });
 
-            println!("{}", new_ident);
+            if new_idents.len() == 0 {
+              new_idents.push(base_ident);
+            }
 
-            if let PathArguments::AngleBracketed(_args) =
-              &ident.arguments
-            {
-
-
-              // here create new ident
-
-              // in generic types I could do something like
-              // Result<X, Y>
-              // Result<Generic, Err>
-              // Result<Ok, Generic>
-              // Result<Generic, Generic> ... how tf do I solve this?
-              // macro_rules!(
-              //
-              let count = *generic_types.get(&ident.ident)
-                .unwrap_or(&0_usize);
-              generic_types.insert(ident.ident.clone(), count + 1);
+            for ident in new_idents {
+              let count = *types.get(&ident).unwrap_or(&0_usize);
+              types.insert(ident, count + 1);
             }
           }
-
-          let count = *types.get(&x.ty).unwrap_or(&0_usize);
-          types.insert(x.ty, count + 1);
-
         }),
-      Fields::Unnamed(fields) =>
-        fields.unnamed.into_iter().for_each(|x| {
-          let count = *types.get(&x.ty).unwrap_or(&0_usize);
-          types.insert(x.ty, count + 1);
-        }),
+      Fields::Unnamed(_fields) => panic!(
+        "Derive(FieldCountByType) only applicable to named structs"),
       Fields::Unit => (),
     },
     _ => panic!("Derive(FieldCountByType) only applicable to structs"),
   }
 
-  let keys = types.keys();
+  let keys: Vec<Type> = types.keys()
+    .map(|key| {
+      let key : proc_macro2::TokenStream = key.parse().unwrap();
+      parse_quote!(#key)
+    })
+    .collect();
   let values = types.values();
 
-  let generic_keys = generic_types.keys();
-  let generic_values = generic_types.values();
-
-  println!("{:?}", generic_types);
-
-  let result = quote! {
+  let res = TokenStream::from(quote! {
     #(
       impl field_count::FieldCountByType<#keys> for #name {
         fn field_count_by_type(&self) -> usize {#values}
       }
     )*
-    #(
-      impl field_count::FieldCountByType<#generic_keys<
-        field_count::Generic>> for #name
-      {
-        fn field_count_by_type(&self) -> usize {#generic_values}
-      }
-    )*
-  };
+  });
 
-  TokenStream::from(result)
+  res
 }
