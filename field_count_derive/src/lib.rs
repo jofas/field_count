@@ -2,6 +2,7 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 
 use quote::quote;
+use quote::ToTokens;
 use syn::{parse_macro_input, DeriveInput, Data, Fields, Type,
   PathArguments};
 
@@ -82,6 +83,8 @@ pub fn derive_field_count_by_type(input: TokenStream) -> TokenStream {
   // two different paths (e.g. struct Example(String,
   // ::std::string::String);) will fail
   //
+  // TODO: arbitrary Generics breadth-wise (<_,_,_,...>)
+  //       arbitrary Generics depth-wise (Option<Option<Generics>>)
   match input.data {
     Data::Struct(data_struct) => match data_struct.fields {
       Fields::Named(fields) =>
@@ -89,11 +92,51 @@ pub fn derive_field_count_by_type(input: TokenStream) -> TokenStream {
 
           //println!("{:?}", x.ty);
 
-          if let Type::Path(path) = &x.ty {
-            let ident = path.path.segments.last().unwrap();
+          if let Type::Path(type_path) = &x.ty {
+            let ident = type_path.path.segments.last().unwrap();
+
+            let mut new_ident = match type_path.path.leading_colon {
+              Some(_) => String::from("::"),
+              None => String::new(),
+            };
+
+            type_path.path.segments.pairs().for_each(|pair| {
+              new_ident = if let Some(_) = pair.punct() {
+                format!("{}{}::", new_ident, pair.value().ident)
+              } else {
+                format!("{}{}", new_ident, pair.value().ident)
+              };
+
+
+              if let PathArguments::AngleBracketed(_args) =
+                &pair.value().arguments
+              {
+                // here iterate all possibilities
+                // (2**arguments.len())
+                // ...
+                //
+                // recursively feed the map into some function ?
+                new_ident =
+                  format!("{}{}", new_ident, _args.to_token_stream());
+              }
+            });
+
+            println!("{}", new_ident);
+
             if let PathArguments::AngleBracketed(_args) =
               &ident.arguments
             {
+
+
+              // here create new ident
+
+              // in generic types I could do something like
+              // Result<X, Y>
+              // Result<Generic, Err>
+              // Result<Ok, Generic>
+              // Result<Generic, Generic> ... how tf do I solve this?
+              // macro_rules!(
+              //
               let count = *generic_types.get(&ident.ident)
                 .unwrap_or(&0_usize);
               generic_types.insert(ident.ident.clone(), count + 1);

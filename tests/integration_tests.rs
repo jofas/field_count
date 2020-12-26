@@ -1,11 +1,13 @@
 use field_count::{FieldCount, RecursiveFieldCount, FieldCountByType,
   Generic};
 
+// TODO: test pointers
+
 #[derive(FieldCount, RecursiveFieldCount, Default, FieldCountByType)]
 struct ExampleNamedStruct {
   field1: i64,
   _field2: Option<bool>,
-  _field3: String,
+  _field3: ::std::string::String,
   _field4: Option<bool>,
   _field5: Option<String>,
 }
@@ -47,6 +49,12 @@ fn test_named_struct_by_type() {
       &ExampleNamedStruct::default()
     ),
     2
+  );
+  assert_eq!(
+    FieldCountByType::<String>::field_count_by_type(
+      &ExampleNamedStruct::default()
+    ),
+    1
   );
   assert_eq!(
     FieldCountByType::<Option<Generic>>::field_count_by_type(
